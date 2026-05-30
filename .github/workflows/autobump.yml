@@ -1,0 +1,127 @@
+name: Auto-bump casks
+
+# Watches the upstream release feeds (via `brew livecheck`) for every cask in
+# this tap and opens a PR with the bumped version + sha256 whenever a newer
+# release ships. One PR per outdated cask, idempotent: if a PR already exists
+# for that cask + new version, the run is a no-op.
+#
+# Manual trigger: Actions → Auto-bump casks → "Run workflow".
+
+on:
+  schedule:
+    # Hourly. Cheap (~30s) and catches most releases within the hour.
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write       # push the bump branch
+  pull-requests: write  # open the PR
+
+jobs:
+  autobump:
+    runs-on: macos-14
+    timeout-minutes: 15
+    env:
+      TAP_FULL_NAME: light-house-group/taps
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Homebrew expects to find the tap under its standard prefix path so that
+      # `brew livecheck --tap <name>` resolves it. Symlink the checked-out repo
+      # in instead of `brew tap` so we work against the exact commit on disk.
+      - name: Link tap into Homebrew prefix
+        run: |
+          set -euxo pipefail
+          owner_repo="${TAP_FULL_NAME%%/*}/homebrew-${TAP_FULL_NAME##*/}"
+          dest="$(brew --repo)/Library/Taps/${owner_repo}"
+          mkdir -p "$(dirname "$dest")"
+          rm -rf "$dest"
+          ln -s "$PWD" "$dest"
+
+      - name: Configure git author
+        run: |
+          git config user.name  "autobump-bot"
+          git config user.email "autobump-bot@users.noreply.github.com"
+
+      - name: Find outdated casks
+        id: livecheck
+        run: |
+          set -euo pipefail
+          # `brew livecheck --json` writes a JSON array; `--newer-only` trims
+          # entries already at the latest version. `--full-name` makes it use
+          # the tap-qualified names.
+          json="$(brew livecheck --cask --tap "$TAP_FULL_NAME" --newer-only --full-name --json || echo '[]')"
+          echo "$json" > /tmp/livecheck.json
+          count="$(jq 'length' /tmp/livecheck.json)"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "Outdated count: $count"
+          jq -r '.[] | "  - \(.cask) \(.version.current) → \(.version.latest)"' /tmp/livecheck.json || true
+
+      - name: Open bump PRs
+        if: steps.livecheck.outputs.count != '0'
+        run: |
+          set -euo pipefail
+          jq -c '.[]' /tmp/livecheck.json | while read -r entry; do
+            full_name="$(jq -r '.cask' <<<"$entry")"
+            cask="${full_name##*/}"
+            current="$(jq -r '.version.current' <<<"$entry")"
+            latest="$(jq -r '.version.latest'  <<<"$entry")"
+            cask_file="Casks/${cask}.rb"
+            if [[ ! -f "$cask_file" ]]; then
+              echo "::warning::Cask file $cask_file not found, skipping"
+              continue
+            fi
+
+            branch="autobump/${cask}-${latest}"
+            # Idempotency: if a remote branch already exists for this bump,
+            # assume a PR is already open / merged and skip.
+            if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+              echo "Branch $branch already exists on origin — skipping $cask"
+              continue
+            fi
+
+            # Compute the new sha256 by downloading the upstream release zip
+            # whose URL we get by substituting the new version into the cask's
+            # `url` field. We DON'T trust the cask's `url` string blindly —
+            # instead we use `brew fetch --cask` which resolves the templated
+            # url for the requested version.
+            tmpdir="$(mktemp -d)"
+            # Bump version in a temp copy so `brew fetch` resolves the new URL.
+            tmpcask="$tmpdir/${cask}.rb"
+            sed -E "s/^( *version )\"[^\"]+\"/\1\"${latest}\"/" "$cask_file" > "$tmpcask"
+
+            # `brew fetch --cask <local file>` downloads to the cache and prints
+            # the cache path; sha256sum that.
+            cached="$(HOMEBREW_NO_AUTO_UPDATE=1 brew fetch --cask --force "$tmpcask" 2>&1 | awk '/^==> Downloaded:/{print $3}' | tail -1)"
+            if [[ -z "${cached:-}" || ! -f "$cached" ]]; then
+              echo "::warning::Could not fetch new zip for $cask v$latest"
+              continue
+            fi
+            new_sha="$(shasum -a 256 "$cached" | awk '{print $1}')"
+
+            git checkout -B "$branch"
+            # Replace version + sha256 in-place.
+            sed -E -i '' "s/^( *version )\"[^\"]+\"/\1\"${latest}\"/" "$cask_file"
+            sed -E -i '' "s/^( *sha256 )\"[a-f0-9]{64}\"/\1\"${new_sha}\"/" "$cask_file"
+
+            if git diff --quiet "$cask_file"; then
+              echo "No textual change for $cask — skipping"
+              git checkout -
+              continue
+            fi
+
+            git add "$cask_file"
+            git commit -m "${cask}: ${current} → ${latest}"
+            git push -u origin "$branch"
+            gh pr create \
+              --title "${cask}: ${current} → ${latest}" \
+              --body "Bumps **${cask}** to upstream release v${latest}. New sha256: \`${new_sha}\`.
+
+Opened by .github/workflows/autobump.yml on a livecheck hit." \
+              --base main \
+              --head "$branch"
+            git checkout main
+          done
