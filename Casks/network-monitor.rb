@@ -2,8 +2,8 @@
 # version + verified sha256 on every release. It rewrites ONLY `version` +
 # `sha256` — never the `url` line — so the URL template below must stay correct.
 cask "network-monitor" do
-  version "2.0.0"
-  sha256 "fc259ed18b56581d6505dd04d652ff66ba503144a97d716c8b5f9f5ff66a8049"
+  version "2.0.2"
+  sha256 "8128566734544cae6cf568f139b97ff58a25cd914bac35360e6344af29ba8884"
 
   url "https://github.com/Light-House-Group/Network-Speed/releases/download/v#{version}/NetworkUsageMonitor-#{version}.dmg"
   name "Network Monitor"
