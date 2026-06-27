@@ -5,10 +5,10 @@ cask "network-monitor" do
   version "1.0.0"
   sha256 "c02c14ebaebff240a05df30423ca6ff49e58270e4fa469dfa70a153f718c82e9"
 
-  url "https://github.com/Light-House-Group/Network-Monitor/releases/download/v#{version}/NetworkUsageMonitor-#{version}.dmg"
+  url "https://github.com/lighthouse-computer/Network-Monitor/releases/download/v#{version}/NetworkUsageMonitor-#{version}.dmg"
   name "Network Monitor"
   desc "Live per-app network usage monitor for the menu bar"
-  homepage "https://github.com/Light-House-Group/Network-Monitor"
+  homepage "https://github.com/lighthouse-computer/Network-Monitor"
 
   livecheck do
     url :url
