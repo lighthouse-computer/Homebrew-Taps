@@ -8,7 +8,6 @@ Homebrew tap for [Lighthouse Computer](https://github.com/lighthouse-computer) a
 | :--- | :--- |
 | [`beacon`](Casks/beacon.rb) | Menu-bar utility for live per-app network monitoring (macOS 13+) |
 | [`clip-board`](Casks/clip-board.rb) | Privacy-first clipboard history manager for macOS — AES-GCM at rest, no network code (macOS 14+) |
-| [`network-monitor`](Casks/network-monitor.rb) | Legacy build of the network monitor — superseded by [`beacon`](Casks/beacon.rb) |
 
 ## Install
 
