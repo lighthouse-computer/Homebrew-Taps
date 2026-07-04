@@ -1,63 +1,74 @@
-# Light-House-Group Homebrew tap
+# Lighthouse Computer — Homebrew tap
 
-Homebrew tap for [Light-House-Group](https://github.com/Light-House-Group) apps.
+Homebrew tap for [Lighthouse Computer](https://github.com/lighthouse-computer) apps.
 
 ## Available casks
 
 | Cask | Description |
 | :--- | :--- |
-| [`network-monitor`](Casks/network-monitor.rb) | Menu-bar utility for live per-app network monitoring (macOS 13+) |
+| [`beacon`](Casks/beacon.rb) | Menu-bar utility for live per-app network monitoring (macOS 13+) |
 | [`clip-board`](Casks/clip-board.rb) | Privacy-first clipboard history manager for macOS — AES-GCM at rest, no network code (macOS 14+) |
+| [`network-monitor`](Casks/network-monitor.rb) | Legacy build of the network monitor — superseded by [`beacon`](Casks/beacon.rb) |
 
 ## Install
 
-```bash
-# Network Monitor
-brew install --cask light-house-group/taps/network-monitor
+A tap is a third-party source you add to Homebrew — you have to add (trust) it
+before installing from it. Add it once, then install:
 
-# Clip-Board
-brew install --cask light-house-group/taps/clip-board
+```bash
+brew tap lighthouse-computer/taps
+brew install --cask beacon
 ```
 
-Homebrew will auto-add this tap the first time you reference it. To add it explicitly:
+Or as a single command (Homebrew adds the tap automatically the first time you
+reference it by its full `owner/tap/cask` path):
 
 ```bash
-brew tap light-house-group/taps
+brew install --cask lighthouse-computer/taps/beacon
+```
+
+Other casks:
+
+```bash
+brew install --cask lighthouse-computer/taps/clip-board
 ```
 
 ## Update
 
 ```bash
 brew update
-brew upgrade --cask network-monitor
-brew upgrade --cask clip-board
+brew upgrade --cask beacon
 ```
 
 ## Uninstall
 
 ```bash
-brew uninstall --cask network-monitor
-brew uninstall --cask clip-board
+brew uninstall --cask beacon
 ```
 
 Add `--zap` to also remove app data and preferences:
 
 ```bash
-brew uninstall --zap --cask network-monitor
+brew uninstall --zap --cask beacon
 ```
 
 ## Gatekeeper
 
-Both apps are signed ad-hoc, not notarized with a paid Developer ID, so by default macOS will refuse to launch them with the "Apple could not verify…" message. Each cask runs a `postflight` block that strips the download-quarantine attribute (`com.apple.quarantine`) on install so the app launches normally — the bytes are pinned by the cask's `sha256`, so this is safe.
-
-If you'd rather not have the quarantine stripped automatically, install with `--no-quarantine` is **not** supported by cask, but you can edit the formula to remove the `postflight` block.
+`beacon` is signed ad-hoc, not notarized with a paid Developer ID, so by default
+macOS refuses to launch it with the "Apple could not verify…" message. Its cask
+runs a `postflight` block that strips the download-quarantine attribute
+(`com.apple.quarantine`) on install so the app launches normally — the bytes are
+pinned by the cask's `sha256`, so this is safe.
 
 ## Auto-bump
 
-This tap runs [`.github/workflows/autobump.yml`](.github/workflows/autobump.yml) on a schedule. It uses `brew livecheck --cask --newer-only` to detect each upstream release, computes the new `sha256` from the new release zip, and opens a PR per cask. The bot tracks bumps by branch name (`autobump/<cask>-<version>`) so repeated runs are idempotent.
-
-You can trigger it manually from the Actions tab.
+This tap runs [`.github/workflows/autobump.yml`](.github/workflows/autobump.yml)
+hourly. For each cask it queries the upstream's latest GitHub release, downloads
+the asset, verifies its `sha256` against the release's published `.sha256`
+sidecar, and commits the `version` + `sha256` bump directly to `main`. No manual
+editing — you can also trigger it from the Actions tab.
 
 ## License
 
-The cask formulae in this repository are released under the [MIT License](LICENSE). The apps they install have their own licenses linked from each formula.
+The cask formulae in this repository are released under the [MIT License](LICENSE).
+The apps they install have their own licenses, linked from each formula.
