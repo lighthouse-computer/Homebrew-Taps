@@ -3,7 +3,7 @@
 # `sha256` — never the `url` line — so the URL template below must stay correct.
 cask "beacon" do
   version "1.0.0"
-  sha256 "b724ffba0b69a2aef2eaab757031c7a5f783f5dde9fea9ae20fb50a13fddc490"
+  sha256 "9e6c8e3de8f7310eab529409aa4dc7955621ac5da0051d0d63eb6af355f9a69d"
 
   url "https://github.com/lighthouse-computer/Beacon/releases/download/v#{version}/Beacon.app.zip",
       verified: "github.com/lighthouse-computer/Beacon/"
